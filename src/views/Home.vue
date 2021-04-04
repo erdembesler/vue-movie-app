@@ -1,16 +1,28 @@
 <template>
   <div class="home">
-    <form @submit.prevent="SearchMovies()" class="search-box">
-      <input
-        type="text"
-        placeholder="Search movies released in 2020.."
-        v-model="search"
-      />
-      <input type="submit" value="Search" />
-    </form>
+    <v-app>
+      <v-card v-click-outside="onClickOutside" color="#2C3C4F" dark>
+        <v-card-text>
+          <v-autocomplete
+            v-model="model"
+            :items="items"
+            :loading="isLoading"
+            :search-input.sync="search"
+            @click:clear="initMovies()"
+            color="white"
+            hide-no-data
+            item-text="Title"
+            placeholder="Search"
+            clearable
+            filled
+            rounded
+          ></v-autocomplete>
+        </v-card-text>
+      </v-card>
+    </v-app>
 
     <div class="movies-list">
-      <div class="movie" v-for="movie in movies" :key="movie.imdbID">
+      <div class="movie" v-for="(movie, index) in movies" :key="index">
         <router-link
           :to="{ name: 'Movie Detail', params: { id: movie.imdbID } }"
           class="movie-link"
@@ -34,39 +46,130 @@ import Vue from "vue";
 import VueCompositionAPI from "@vue/composition-api";
 
 Vue.use(VueCompositionAPI);
-import { ref } from "@vue/composition-api";
-
 import env from "@/env.js";
 
 export default {
-  setup() {
-    const search = ref("");
-    const movies = ref([]);
+  data: () => ({
+    descriptionLimit: 60,
+    movies: [],
+    searchMovies: [],
+    isLoading: false,
+    model: null,
+    search: null,
+  }),
 
-    const SearchMovies = () => {
-      if (search.value != "") {
-        fetch(
-          `http://www.omdbapi.com/?apikey=${env.apikey}&s=${search.value}&y=2020`
-        )
+  computed: {
+    fields() {
+      if (!this.model) return [];
+
+      return Object.keys(this.model).map((key) => {
+        return {
+          key,
+          value: this.model[key] || "n/a",
+        };
+      });
+    },
+    items() {
+      if (this.searchMovies) {
+        return this.searchMovies.map((entry) => {
+          //autocomplete items max text length is descriptionLimit
+          const Title =
+            entry.Title.length > this.descriptionLimit
+              ? entry.Title.slice(0, this.descriptionLimit) + "..."
+              : entry.Title;
+
+          return Object.assign({}, entry, { Title });
+        });
+      } else {
+        return [];
+      }
+    },
+  },
+  watch: {
+    search(val, oldVal) {
+      //search text at least for length of three
+      if (val == null || val.length < 3) {
+        if (oldVal == null || oldVal.length < 3) {
+          return;
+        }
+        this.isLoading = true;
+
+        fetch(`http://www.omdbapi.com/?apikey=${env.apikey}&y=2020&s=game`)
           .then((response) => response.json())
           .then((data) => {
-            movies.value = data.Search;
-            search.value = "";
-          });
-      }
-    };
+            this.searchMovies = [];
+            this.movies = data ? data.Search : [];
+          })
+          .catch((err) => {
+            console.log(err);
+          })
+          .finally(() => (this.isLoading = false));
 
-    return {
-      search,
-      movies,
-      SearchMovies,
-    };
+        return;
+      }
+
+      // Items have already been requested
+      if (this.isLoading) return;
+
+      this.isLoading = true;
+
+      // Lazily load input items
+      fetch(`http://www.omdbapi.com/?apikey=${env.apikey}&s=${val}&y=2020`)
+        .then((response) => response.json())
+        .then((data) => {
+          this.movies = data ? data.Search : [];
+          this.searchMovies = this.movies;
+        })
+        .catch((err) => {
+          console.log(err);
+        })
+        .finally(() => (this.isLoading = false));
+    },
+  },
+  methods: {
+    initMovies() {
+      //Because ombd api does not allow to get all movies or randomly pick limited amount of movies,
+      // by default "game" search input has been given to query in order to list some movies on home screen.
+      fetch(`http://www.omdbapi.com/?apikey=${env.apikey}&s=game&y=2020`)
+        .then((response) => response.json())
+        .then((data) => {
+          this.movies = data ? data.Search : [];
+          this.searchMovies = [];
+        })
+        .catch((err) => {
+          console.log(err);
+        })
+        .finally(() => (this.isLoading = false));
+    },
+  },
+  beforeMount() {
+    this.initMovies();
   },
 };
 </script>
 
 <style lang="scss">
 .home {
+  .v-application {
+    background-color: #2c3c4f !important;
+    color: #2c3c4f;
+    max-width: 100%;
+
+    .v-application--wrap {
+      flex: 1 1 auto;
+      background-color: #2c3c4f;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0vh;
+      max-width: 100%;
+      position: relative;
+      .v-input__slot {
+        width: 35%;
+      }
+    }
+  }
+
   .feature-card {
     position: relative;
 

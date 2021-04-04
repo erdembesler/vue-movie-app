@@ -2,7 +2,7 @@
   <div>
     <header>
       <router-link to="/">
-        <h1><span>Movie </span>App</h1>
+        <h1><span>MovieApp</span> Home</h1>
       </router-link>
     </header>
     <main>

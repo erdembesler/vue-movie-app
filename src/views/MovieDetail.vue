@@ -1,9 +1,14 @@
 <template>
-  <div class="movie-detail">
-    <h2>{{ movie.Title }}</h2>
-    <p>{{ movie.Year }}</p>
-    <img :src="movie.Poster" alt="Movie Poster" class="featured-img" />
-    <p>{{ movie.Plot }}</p>
+  <div>
+    <div class="not-found-div" v-if="notFound == true">Movie not found..</div>
+    <div v-if="notFound == false" class="movie-detail">
+      <h2>{{ movie.Title }}</h2>
+      <p>{{ movie.Year }}</p>
+      <div class="image-div">
+        <img :src="movie.Poster" alt="Movie Poster" class="featured-img" />
+      </div>
+      <p>{{ movie.Plot }}</p>
+    </div>
   </div>
 </template>
 
@@ -21,6 +26,7 @@ import env from "@/env.js";
 export default {
   setup(props, context) {
     const movie = ref({});
+    const notFound = ref(false);
     const route = context.root.$route;
     onBeforeMount(() => {
       fetch(
@@ -28,21 +34,48 @@ export default {
       )
         .then((response) => response.json())
         .then((data) => {
-          movie.value = data;
+          // eslint-disable-next-line no-debugger
+          debugger;
+          if (data.Response == "False") {
+            notFound.value = true;
+          } else {
+            if (data.Poster == "N/A") {
+              data.Poster =
+                "https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg";
+            }
+            movie.value = data;
+            notFound.value = false;
+          }
         });
     });
 
     return {
       movie,
+      notFound,
     };
   },
 };
 </script>
 
 <style lang="scss">
+.not-found-div {
+  padding: 10px;
+  text-align: center;
+  color: white;
+}
 .movie-detail {
+  display: block;
+  margin: 0 auto;
+  border-bottom: 20px solid white;
+  border-top: 2px solid white;
+  border-radius: 2px;
+  background-color: #2c3c4f;
   padding: 16px;
-
+  max-width: 50%;
+  text-align: center;
+  .image-div {
+    display: inline-block;
+  }
   h2 {
     color: #fff;
     font-size: 28px;
@@ -52,7 +85,7 @@ export default {
 
   .featured-img {
     display: block;
-    max-width: 200px;
+    max-width: 300px;
     margin-bottom: 16px;
   }
 
